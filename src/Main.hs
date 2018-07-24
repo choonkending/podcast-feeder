@@ -6,7 +6,7 @@ import Network.HTTP.Conduit
 import Control.Monad.Trans.Resource (runResourceT, ResourceT)
 import Control.Monad.Trans.Class (lift)
 import Text.XML
-import Text.XML.Stream.Parse
+import qualified Text.XML.Stream.Parse as SP
 
 main :: IO ()
 main =
@@ -16,7 +16,7 @@ main =
   createRequest >>= (\request
     -> runResourceT (getManager >>= (\manager ->
       (http request manager) >>= (\response ->
-        runConduit $ responseBody response .| parseBytes def .| CL.map (\e -> (Nothing, e)) .| fromEvents
+        runConduit $ responseBody response .| SP.parseBytes SP.def .| CL.map (\e -> (Nothing, e)) .| fromEvents
       )))) >>= \doc -> print doc
 
 getManager :: ResourceT IO Manager
