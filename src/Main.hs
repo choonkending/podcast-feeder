@@ -5,7 +5,7 @@ import qualified Data.Conduit.List as CL
 import Network.HTTP.Conduit
 import Control.Monad.Trans.Resource (runResourceT, ResourceT)
 import Control.Monad.Trans.Class (lift)
-import Text.XML
+import Text.XML.Unresolved (fromEvents)
 import qualified Text.XML.Stream.Parse as SP
 
 main :: IO ()
