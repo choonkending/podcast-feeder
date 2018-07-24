@@ -2,7 +2,7 @@ module Main where
 import Conduit (runConduit, (.|))
 import Data.Conduit.List (sinkNull)
 import qualified Data.Conduit.List as CL
-import Network.HTTP.Conduit
+import Network.HTTP.Conduit (http, newManager, tlsManagerSettings, Manager, parseRequest, Request, responseBody)
 import Control.Monad.Trans.Resource (runResourceT, ResourceT)
 import Control.Monad.Trans.Class (lift)
 import Text.XML.Unresolved (fromEvents)
