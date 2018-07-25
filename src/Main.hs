@@ -1,7 +1,6 @@
 module Main where
 import Conduit (runConduit, (.|), MonadThrow)
 import Data.Conduit (ConduitM)
-import Data.Conduit.List (sinkNull)
 import qualified Data.Conduit.List as CL
 import qualified Data.ByteString.Internal as B
 import Network.HTTP.Conduit (http, newManager, tlsManagerSettings, Manager, parseRequest, Request, responseBody)
