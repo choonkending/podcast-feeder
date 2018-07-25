@@ -12,8 +12,8 @@ import qualified Text.XML.Stream.Parse as SP
 
 main :: IO ()
 main =
-  createRequest >>= (\request
-    -> runResourceT (getManager >>= (\manager ->
+  createRequest >>= (\request ->
+    runResourceT (getManager >>= (\manager ->
       (http request manager) >>= (\response ->
         runConduit $ transformToDocument $ responseBody response
       )))) >>= \doc -> print doc
