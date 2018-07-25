@@ -12,9 +12,6 @@ import qualified Text.XML.Stream.Parse as SP
 
 main :: IO ()
 main =
-  -- request <- parseRequest "http://feeds.feedburner.com/seriouseats/recipes"
-  -- doc <- runResourceT $ go request
-  -- print doc
   createRequest >>= (\request
     -> runResourceT (getManager >>= (\manager ->
       (http request manager) >>= (\response ->
@@ -29,10 +26,4 @@ getManager = lift $ newManager tlsManagerSettings
 
 createRequest :: IO Request
 createRequest = parseRequest "http://feeds.feedburner.com/seriouseats/recipes"
-
--- go :: Request -> ResourceT IO Document
--- go request = do
---   manager <- lift (newManager tlsManagerSettings)
---   r <- (http request manager)
---   runConduit $ responseBody r .| parseBytes def .| CL.map (\e -> (Nothing, e)) .| fromEvents
 
