@@ -1,11 +1,14 @@
 module Main where
-import Conduit (runConduit, (.|))
+import Conduit (runConduit, (.|), MonadThrow)
+import Data.Conduit (ConduitM)
 import Data.Conduit.List (sinkNull)
 import qualified Data.Conduit.List as CL
+import qualified Data.ByteString.Internal as B
 import Network.HTTP.Conduit (http, newManager, tlsManagerSettings, Manager, parseRequest, Request, responseBody)
 import Control.Monad.Trans.Resource (runResourceT, ResourceT)
 import Control.Monad.Trans.Class (lift)
 import Text.XML.Unresolved (fromEvents)
+import qualified Data.XML.Types as XT
 import qualified Text.XML.Stream.Parse as SP
 
 main :: IO ()
@@ -16,8 +19,11 @@ main =
   createRequest >>= (\request
     -> runResourceT (getManager >>= (\manager ->
       (http request manager) >>= (\response ->
-        runConduit $ responseBody response .| SP.parseBytes SP.def .| CL.map (\e -> (Nothing, e)) .| fromEvents
+        runConduit $ transformToDocument $ responseBody response
       )))) >>= \doc -> print doc
+
+transformToDocument :: MonadThrow m => ConduitM i B.ByteString m () -> ConduitM i o m XT.Document
+transformToDocument input = input .| SP.parseBytes SP.def .| CL.map (\e -> (Nothing, e)) .| fromEvents
 
 getManager :: ResourceT IO Manager
 getManager = lift $ newManager tlsManagerSettings
