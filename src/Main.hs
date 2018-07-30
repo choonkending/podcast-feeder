@@ -1,7 +1,6 @@
 module Main where
 import Conduit (runConduit, (.|), MonadThrow)
 import Data.Conduit (ConduitM)
-import qualified Data.Conduit.List as CL
 import qualified Data.ByteString.Internal as B
 import Network.HTTP.Conduit (http, newManager, tlsManagerSettings, Manager, parseRequest, Request, responseBody)
 import Control.Monad.Trans.Resource (runResourceT, ResourceT)
@@ -19,7 +18,7 @@ main =
       )))) >>= \doc -> print doc
 
 transformToDocument :: MonadThrow m => ConduitM i B.ByteString m () -> ConduitM i o m XT.Document
-transformToDocument input = input .| SP.parseBytes SP.def .| CL.map (\e -> (Nothing, e)) .| fromEvents
+transformToDocument input = input .| SP.parseBytesPos SP.def .| fromEvents
 
 getManager :: ResourceT IO Manager
 getManager = lift $ newManager tlsManagerSettings
