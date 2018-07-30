@@ -5,7 +5,7 @@ import qualified Data.ByteString.Internal as B
 import Network.HTTP.Conduit (http, newManager, tlsManagerSettings, Manager, parseRequest, Request, responseBody)
 import Control.Monad.Trans.Resource (runResourceT, ResourceT)
 import Control.Monad.Trans.Class (lift)
-import Text.XML.Unresolved (fromEvents)
+import Text.XML.Unresolved (sinkDoc)
 import qualified Data.XML.Types as XT
 import qualified Text.XML.Stream.Parse as SP
 
@@ -18,7 +18,7 @@ main =
       )))) >>= \doc -> print doc
 
 transformToDocument :: MonadThrow m => ConduitM i B.ByteString m () -> ConduitM i o m XT.Document
-transformToDocument input = input .| SP.parseBytesPos SP.def .| fromEvents
+transformToDocument input = input .| sinkDoc SP.def
 
 getManager :: ResourceT IO Manager
 getManager = lift $ newManager tlsManagerSettings
