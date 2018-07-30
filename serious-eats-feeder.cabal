@@ -24,4 +24,5 @@ executable serious-eats-feeder
                        xml-conduit,
                        transformers,
                        bytestring,
-                       xml-types
+                       xml-types,
+                       servant
