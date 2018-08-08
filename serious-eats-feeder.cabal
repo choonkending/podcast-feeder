@@ -25,4 +25,6 @@ executable serious-eats-feeder
                        transformers,
                        bytestring,
                        xml-types,
-                       servant
+                       servant,
+                       text,
+                       time
