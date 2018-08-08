@@ -10,6 +10,7 @@ import Control.Monad.Trans.Class (lift)
 import Text.XML.Unresolved (sinkDoc)
 import qualified Data.XML.Types as XT
 import qualified Text.XML.Stream.Parse as SP
+import Servant.API ((:>), QueryParam, Get, JSON)
 
 main :: IO ()
 main =
@@ -18,6 +19,11 @@ main =
       (http request manager) >>= (\response ->
         runConduit $ transformToDocument $ responseBody response
       )))) >>= \doc -> print doc
+
+type RecipeAPI = "recipes" :> QueryParam "sortBy" SortBy :> Get '[JSON] [Recipe]
+
+data Recipe = Recipe
+data SortBy = PublishedDescending | PublishedAscending
 
 transformToDocument :: MonadThrow m => ConduitM i B.ByteString m () -> ConduitM i o m XT.Document
 transformToDocument input = input .| sinkDoc SP.def
