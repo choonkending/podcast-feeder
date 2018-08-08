@@ -26,5 +26,6 @@ executable serious-eats-feeder
                        bytestring,
                        xml-types,
                        servant,
+                       servant-server,
                        text,
                        time
