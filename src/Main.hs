@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Main where
 import Conduit (runConduit, (.|), MonadThrow)
 import Data.Conduit (ConduitM)
@@ -11,6 +12,7 @@ import Text.XML.Unresolved (sinkDoc)
 import qualified Data.XML.Types as XT
 import qualified Text.XML.Stream.Parse as SP
 import Servant.API ((:>), QueryParam, Get, JSON)
+import GHC.Generics (Generic)
 
 main :: IO ()
 main =
@@ -22,7 +24,7 @@ main =
 
 type RecipeAPI = "recipes" :> QueryParam "sortBy" SortBy :> Get '[JSON] [Recipe]
 
-data Recipe = Recipe
+data Recipe = Recipe deriving (Generic)
 data SortBy = PublishedDescending | PublishedAscending
 
 transformToDocument :: MonadThrow m => ConduitM i B.ByteString m () -> ConduitM i o m XT.Document
