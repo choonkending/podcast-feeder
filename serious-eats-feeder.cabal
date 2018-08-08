@@ -28,4 +28,5 @@ executable serious-eats-feeder
                        servant,
                        servant-server,
                        text,
-                       time
+                       time,
+                       aeson
