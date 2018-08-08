@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeOperators #-}
 module Main where
 import Conduit (runConduit, (.|), MonadThrow)
 import Data.Conduit (ConduitM)
