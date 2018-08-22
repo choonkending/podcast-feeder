@@ -12,6 +12,8 @@ import Text.XML.Unresolved (sinkDoc)
 import qualified Data.XML.Types as XT
 import qualified Text.XML.Stream.Parse as SP
 import Servant.API ((:>), QueryParam, Get, JSON)
+import Servant.Server(Server)
+import Data.Aeson (ToJSON(..))
 import GHC.Generics (Generic)
 
 main :: IO ()
@@ -24,8 +26,21 @@ main =
 
 type RecipeAPI = "recipes" :> QueryParam "sortBy" SortBy :> Get '[JSON] [Recipe]
 
-data Recipe = Recipe deriving (Generic)
+data Recipe = Recipe {
+  title :: String,
+  summary :: String
+} deriving (Generic)
+instance ToJSON Recipe
 data SortBy = PublishedDescending | PublishedAscending
+
+recipes1 :: [Recipe]
+recipes1 =
+  [
+    Recipe "Summer Rolls With Jicama, Watermelon, and Herbs" "Keep cool with these refreshing no-cook summer rolls, filled with watermelon, jicama, and herbs. "
+  ]
+
+server :: Server RecipeAPI
+server _ = return recipes1
 
 transformToDocument :: MonadThrow m => ConduitM i B.ByteString m () -> ConduitM i o m XT.Document
 transformToDocument input = input .| sinkDoc SP.def
