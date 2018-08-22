@@ -29,4 +29,6 @@ executable serious-eats-feeder
                        servant-server,
                        text,
                        time,
-                       aeson
+                       aeson,
+                       wai,
+                       warp
