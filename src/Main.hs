@@ -8,9 +8,11 @@ import qualified Data.ByteString.Internal as B
 import Network.HTTP.Conduit (http, newManager, tlsManagerSettings, Manager, parseRequest, Request, responseBody)
 import Control.Monad.Trans.Resource (runResourceT, ResourceT)
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.IO.Class (liftIO)
 import Text.XML.Unresolved (sinkDoc)
 import qualified Data.XML.Types as XT
 import qualified Text.XML.Stream.Parse as SP
+import qualified Data.Text as T
 import Servant.API ((:>), QueryParam, Get, JSON, FromHttpApiData(..))
 import Servant.Server (Server, serve)
 import Data.Aeson (ToJSON(..))
@@ -25,31 +27,45 @@ main = run 8081 app where
   proxy :: Proxy RecipeAPI
   proxy = Proxy
 
-parseFeed :: IO ()
+parseFeed :: IO [Recipe]
 parseFeed =
   createRequest >>= (\request ->
     runResourceT (getManager >>= (\manager ->
       (http request manager) >>= (\response ->
         runConduit $ transformToDocument $ responseBody response
-      )))) >>= \doc -> print doc
+      )))) >>= \doc -> pure (transformXMLToRecipe doc)
+
+atom :: String -> XT.Name
+atom localName = XT.Name {
+    XT.nameLocalName = T.pack localName,
+    XT.nameNamespace = Just $ T.pack "http://www.w3.org/2005/Atom" ,
+    XT.namePrefix = Nothing
+  }
+
+entryToRecipe :: XT.Element -> [Recipe]
+entryToRecipe e = do
+  title <- XT.elementChildren e >>= XT.isNamed (atom "title") >>= XT.elementText
+  summary <- XT.elementChildren e >>= XT.isNamed (atom "summary") >>= XT.elementText
+  [Recipe { title = title, summary = summary }]
+
+transformXMLToRecipe :: XT.Document -> [Recipe]
+transformXMLToRecipe doc = let
+    root = XT.documentRoot doc
+    nodes = XT.elementNodes root
+    recipes = nodes >>= XT.isElement >>= XT.isNamed (atom "entry") >>= entryToRecipe
+  in recipes
 
 type RecipeAPI = "recipes" :> QueryParam "sortBy" SortBy :> Get '[JSON] [Recipe]
 
 data Recipe = Recipe {
-  title :: String,
-  summary :: String
-} deriving (Generic)
+  title :: T.Text,
+  summary :: T.Text
+} deriving (Generic, Show)
 instance ToJSON Recipe
 data SortBy = PublishedDescending | PublishedAscending
 
-recipes1 :: [Recipe]
-recipes1 =
-  [
-    Recipe "Summer Rolls With Jicama, Watermelon, and Herbs" "Keep cool with these refreshing no-cook summer rolls, filled with watermelon, jicama, and herbs. "
-  ]
-
 server :: Server RecipeAPI
-server _ = return recipes1
+server _ = liftIO parseFeed
 
 
 instance FromHttpApiData SortBy where
