@@ -20,20 +20,22 @@ import GHC.Generics (Generic)
 import Network.Wai (Application)
 import Network.Wai.Handler.Warp (run)
 import Data.Proxy (Proxy(..))
+import Data.Maybe (maybeToList)
+import qualified Item
 
 main :: IO ()
 main = run 8081 app where
   app = serve proxy server
-  proxy :: Proxy RecipeAPI
+  proxy :: Proxy ItemAPI
   proxy = Proxy
 
-parseFeed :: IO [Recipe]
+parseFeed :: IO [Item.Item]
 parseFeed =
   createRequest >>= (\request ->
     runResourceT (getManager >>= (\manager ->
       (http request manager) >>= (\response ->
         runConduit $ transformToDocument $ responseBody response
-      )))) >>= \doc -> pure (transformXMLToRecipe doc)
+      )))) >>= \doc -> pure (transformXMLToItems doc)
 
 atom :: String -> XT.Name
 atom localName = XT.Name {
@@ -42,11 +44,18 @@ atom localName = XT.Name {
     XT.namePrefix = Nothing
   }
 
+rss :: String -> XT.Name
+rss localName = XT.Name {
+    XT.nameLocalName = T.pack localName,
+    XT.nameNamespace = Nothing,
+    XT.namePrefix = Nothing
+  }
+
 entryToRecipe :: XT.Element -> [Recipe]
 entryToRecipe e = do
   title <- XT.elementChildren e >>= XT.isNamed (atom "title") >>= XT.elementText
   summary <- XT.elementChildren e >>= XT.isNamed (atom "summary") >>= XT.elementText
-  [Recipe { title = title, summary = summary }]
+  [Recipe { recipeTitle = title, summary = summary }]
 
 transformXMLToRecipe :: XT.Document -> [Recipe]
 transformXMLToRecipe doc = let
@@ -55,16 +64,43 @@ transformXMLToRecipe doc = let
     recipes = nodes >>= XT.isElement >>= XT.isNamed (atom "entry") >>= entryToRecipe
   in recipes
 
-type RecipeAPI = "recipes" :> QueryParam "sortBy" SortBy :> Get '[JSON] [Recipe]
+transformXMLToItems :: XT.Document -> [Item.Item]
+transformXMLToItems doc = let
+    root = XT.documentRoot doc
+    channel = XT.elementChildren root >>= XT.isNamed (rss "channel")
+    items = channel >>= XT.elementChildren >>= XT.isNamed (rss "item") >>= transformToItem
+  in items
+
+transformToItem :: XT.Element -> [Item.Item]
+transformToItem i = do
+  title <- XT.elementChildren i >>= XT.isNamed (rss "title") >>= XT.elementText
+  description <- XT.elementChildren i >>= XT.isNamed (rss "description") >>= XT.elementText
+  enclosure <- XT.elementChildren i >>= XT.isNamed (rss "enclosure") >>= transformToEnclosure
+  [Item.Item { Item.title = title, Item.description = description, Item.enclosure = enclosure }]
+
+transformToEnclosure :: XT.Element -> [Item.Enclosure]
+transformToEnclosure e = do
+  url <- maybeToList $ XT.attributeText (rss "url") e
+  length <- maybeToList $ XT.attributeText (rss "length") e >>= parseInteger
+  mediaType <- maybeToList $ XT.attributeText (rss "type") e
+  [Item.Enclosure { Item.url = url, Item.length = length, Item.mediaType = mediaType }]
+
+parseInteger :: T.Text -> Maybe Integer
+parseInteger t = case reads (T.unpack t) of
+  [(i, "")] -> Just i
+  _ -> Nothing
+
+type ItemAPI = "items" :> QueryParam "sortBy" SortBy :> Get '[JSON] [Item.Item]
 
 data Recipe = Recipe {
-  title :: T.Text,
+  recipeTitle :: T.Text,
   summary :: T.Text
 } deriving (Generic, Show)
 instance ToJSON Recipe
+
 data SortBy = PublishedDescending | PublishedAscending
 
-server :: Server RecipeAPI
+server :: Server ItemAPI
 server _ = liftIO parseFeed
 
 
@@ -78,5 +114,6 @@ getManager :: ResourceT IO Manager
 getManager = lift $ newManager tlsManagerSettings
 
 createRequest :: IO Request
-createRequest = parseRequest "http://feeds.feedburner.com/seriouseats/recipes"
+-- createRequest = parseRequest "http://feeds.feedburner.com/seriouseats/recipes"
+createRequest = parseRequest "http://podcast.bswa.org/feed.xml"
 
