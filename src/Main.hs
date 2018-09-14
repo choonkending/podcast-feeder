@@ -37,32 +37,12 @@ parseFeed =
         runConduit $ transformToDocument $ responseBody response
       )))) >>= \doc -> pure (transformXMLToItems doc)
 
-atom :: String -> XT.Name
-atom localName = XT.Name {
-    XT.nameLocalName = T.pack localName,
-    XT.nameNamespace = Just $ T.pack "http://www.w3.org/2005/Atom" ,
-    XT.namePrefix = Nothing
-  }
-
 rss :: String -> XT.Name
 rss localName = XT.Name {
     XT.nameLocalName = T.pack localName,
     XT.nameNamespace = Nothing,
     XT.namePrefix = Nothing
   }
-
-entryToRecipe :: XT.Element -> [Recipe]
-entryToRecipe e = do
-  title <- XT.elementChildren e >>= XT.isNamed (atom "title") >>= XT.elementText
-  summary <- XT.elementChildren e >>= XT.isNamed (atom "summary") >>= XT.elementText
-  [Recipe { recipeTitle = title, summary = summary }]
-
-transformXMLToRecipe :: XT.Document -> [Recipe]
-transformXMLToRecipe doc = let
-    root = XT.documentRoot doc
-    nodes = XT.elementNodes root
-    recipes = nodes >>= XT.isElement >>= XT.isNamed (atom "entry") >>= entryToRecipe
-  in recipes
 
 transformXMLToItems :: XT.Document -> [Item.Item]
 transformXMLToItems doc = let
@@ -92,17 +72,10 @@ parseInteger t = case reads (T.unpack t) of
 
 type ItemAPI = "items" :> QueryParam "sortBy" SortBy :> Get '[JSON] [Item.Item]
 
-data Recipe = Recipe {
-  recipeTitle :: T.Text,
-  summary :: T.Text
-} deriving (Generic, Show)
-instance ToJSON Recipe
-
 data SortBy = PublishedDescending | PublishedAscending
 
 server :: Server ItemAPI
 server _ = liftIO parseFeed
-
 
 instance FromHttpApiData SortBy where
   parseQueryParam _ = Right PublishedDescending
@@ -114,6 +87,5 @@ getManager :: ResourceT IO Manager
 getManager = lift $ newManager tlsManagerSettings
 
 createRequest :: IO Request
--- createRequest = parseRequest "http://feeds.feedburner.com/seriouseats/recipes"
 createRequest = parseRequest "http://podcast.bswa.org/feed.xml"
 
