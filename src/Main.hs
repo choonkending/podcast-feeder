@@ -13,7 +13,7 @@ import Text.XML.Unresolved (sinkDoc)
 import qualified Data.XML.Types as XT
 import qualified Text.XML.Stream.Parse as SP
 import qualified Data.Text as T
-import Servant.API ((:>), QueryParam, Get, JSON, FromHttpApiData(..))
+import Servant.API ((:>), QueryParam, Get, JSON, FromHttpApiData(..), Capture)
 import Servant.Server (Server, serve)
 import Data.Aeson (ToJSON(..))
 import GHC.Generics (Generic)
@@ -29,9 +29,9 @@ main = run 8081 app where
   proxy :: Proxy ItemAPI
   proxy = Proxy
 
-parseFeed :: IO [Item.Item]
-parseFeed =
-  createRequest >>= (\request ->
+parseFeed :: String -> IO [Item.Item]
+parseFeed url =
+  createRequest url >>= (\request ->
     runResourceT (getManager >>= (\manager ->
       (http request manager) >>= (\response ->
         runConduit $ transformToDocument $ responseBody response
@@ -70,12 +70,12 @@ parseInteger t = case reads (T.unpack t) of
   [(i, "")] -> Just i
   _ -> Nothing
 
-type ItemAPI = "items" :> QueryParam "sortBy" SortBy :> Get '[JSON] [Item.Item]
+type ItemAPI = "items" :> Capture "url" String :> QueryParam "sortBy" SortBy :> Get '[JSON] [Item.Item]
 
 data SortBy = PublishedDescending | PublishedAscending
 
 server :: Server ItemAPI
-server _ = liftIO parseFeed
+server url _ = liftIO (parseFeed url)
 
 instance FromHttpApiData SortBy where
   parseQueryParam _ = Right PublishedDescending
@@ -86,6 +86,6 @@ transformToDocument input = input .| sinkDoc SP.def
 getManager :: ResourceT IO Manager
 getManager = lift $ newManager tlsManagerSettings
 
-createRequest :: IO Request
-createRequest = parseRequest "http://podcast.bswa.org/feed.xml"
+createRequest :: String -> IO Request
+createRequest url = parseRequest url
 
