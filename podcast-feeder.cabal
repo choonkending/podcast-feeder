@@ -30,4 +30,5 @@ executable podcast-feeder
                        time,
                        aeson,
                        wai,
+                       wai-cors,
                        warp

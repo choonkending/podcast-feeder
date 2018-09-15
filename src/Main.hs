@@ -19,13 +19,14 @@ import Data.Aeson (ToJSON(..))
 import GHC.Generics (Generic)
 import Network.Wai (Application)
 import Network.Wai.Handler.Warp (run)
+import Network.Wai.Middleware.Cors (simpleCors)
 import Data.Proxy (Proxy(..))
 import Data.Maybe (maybeToList)
 import qualified Item
 
 main :: IO ()
 main = run 8081 app where
-  app = serve proxy server
+  app = simpleCors $ serve proxy server
   proxy :: Proxy ItemAPI
   proxy = Proxy
 
