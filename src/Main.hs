@@ -32,7 +32,7 @@ main = run 8081 app where
 
 parseFeed :: String -> IO [Item.Item]
 parseFeed url =
-  createRequest url >>= (\request ->
+  parseRequest url >>= (\request ->
     runResourceT (getManager >>= (\manager ->
       (http request manager) >>= (\response ->
         runConduit $ transformToDocument $ responseBody response
@@ -86,7 +86,4 @@ transformToDocument input = input .| sinkDoc SP.def
 
 getManager :: ResourceT IO Manager
 getManager = lift $ newManager tlsManagerSettings
-
-createRequest :: String -> IO Request
-createRequest url = parseRequest url
 
