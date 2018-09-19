@@ -5,24 +5,20 @@ module Main where
 import Conduit (runConduit, (.|), MonadThrow)
 import Data.Conduit (ConduitM)
 import qualified Data.ByteString.Internal as B
-import Network.HTTP.Conduit (http, newManager, tlsManagerSettings, Manager, parseRequest, Request, responseBody)
+import Network.HTTP.Conduit (http, newManager, tlsManagerSettings, Manager, parseRequest, responseBody)
 import Control.Monad.Trans.Resource (runResourceT, ResourceT)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.IO.Class (liftIO)
 import Text.XML.Unresolved (sinkDoc)
 import qualified Data.XML.Types as XT
 import qualified Text.XML.Stream.Parse as SP
-import qualified Data.Text as T
 import Servant.API ((:>), QueryParam, Get, JSON, FromHttpApiData(..), Capture)
 import Servant.Server (Server, serve)
-import Data.Aeson (ToJSON(..))
-import GHC.Generics (Generic)
-import Network.Wai (Application)
 import Network.Wai.Handler.Warp (run)
 import Network.Wai.Middleware.Cors (simpleCors)
 import Data.Proxy (Proxy(..))
-import Data.Maybe (maybeToList)
 import qualified Item
+import qualified ParseFeed
 
 main :: IO ()
 main = run 8081 app where
@@ -36,40 +32,7 @@ parseFeed url =
     runResourceT (getManager >>= (\manager ->
       (http request manager) >>= (\response ->
         runConduit $ transformToDocument $ responseBody response
-      )))) >>= \doc -> pure (transformXMLToItems doc)
-
-rss :: String -> XT.Name
-rss localName = XT.Name {
-    XT.nameLocalName = T.pack localName,
-    XT.nameNamespace = Nothing,
-    XT.namePrefix = Nothing
-  }
-
-transformXMLToItems :: XT.Document -> [Item.Item]
-transformXMLToItems doc = let
-    root = XT.documentRoot doc
-    channel = XT.elementChildren root >>= XT.isNamed (rss "channel")
-    items = channel >>= XT.elementChildren >>= XT.isNamed (rss "item") >>= transformToItem
-  in items
-
-transformToItem :: XT.Element -> [Item.Item]
-transformToItem i = do
-  title <- XT.elementChildren i >>= XT.isNamed (rss "title") >>= XT.elementText
-  description <- XT.elementChildren i >>= XT.isNamed (rss "description") >>= XT.elementText
-  enclosure <- XT.elementChildren i >>= XT.isNamed (rss "enclosure") >>= transformToEnclosure
-  [Item.Item { Item.title = title, Item.description = description, Item.enclosure = enclosure }]
-
-transformToEnclosure :: XT.Element -> [Item.Enclosure]
-transformToEnclosure e = do
-  url <- maybeToList $ XT.attributeText (rss "url") e
-  length <- maybeToList $ XT.attributeText (rss "length") e >>= parseInteger
-  mediaType <- maybeToList $ XT.attributeText (rss "type") e
-  [Item.Enclosure { Item.url = url, Item.length = length, Item.mediaType = mediaType }]
-
-parseInteger :: T.Text -> Maybe Integer
-parseInteger t = case reads (T.unpack t) of
-  [(i, "")] -> Just i
-  _ -> Nothing
+      )))) >>= \doc -> pure (ParseFeed.transformXMLToItems doc)
 
 type ItemAPI = "items" :> Capture "url" String :> QueryParam "sortBy" SortBy :> Get '[JSON] [Item.Item]
 
