@@ -31,4 +31,5 @@ executable podcast-feeder
                        aeson,
                        wai,
                        wai-cors,
-                       warp
+                       warp,
+                       free
