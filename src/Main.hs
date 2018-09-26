@@ -19,6 +19,7 @@ import Network.Wai.Middleware.Cors (simpleCors)
 import Data.Proxy (Proxy(..))
 import qualified Item
 import qualified ParseFeed
+import qualified Action
 
 main :: IO ()
 main = run 8081 app where
