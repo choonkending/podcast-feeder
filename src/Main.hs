@@ -13,10 +13,11 @@ import Text.XML.Unresolved (sinkDoc)
 import qualified Data.XML.Types as XT
 import qualified Text.XML.Stream.Parse as SP
 import Servant.API ((:>), QueryParam, Get, JSON, FromHttpApiData(..), Capture, (:<|>)(..))
-import Servant.Server (Server, serve, Handler)
+import Servant.Server (Server, serve, Handler, err404)
 import Network.Wai.Handler.Warp (run)
 import Network.Wai.Middleware.Cors (simpleCors)
 import Data.Proxy (Proxy(..))
+import Control.Monad.Error.Class (throwError)
 import qualified Item
 import qualified ParseFeed
 import qualified Action
@@ -52,7 +53,7 @@ progress :: Maybe Action.UserID -> Maybe Action.Url -> Handler Action.Progress
 progress (Just uid) (Just url) = do
   position <- liftIO $ Interpreter.interpret (Action.FetchPosition uid url)
   case position of
-    Nothing -> fail "not found"
+    Nothing -> throwError err404
     Just a -> pure a
 
 instance FromHttpApiData SortBy where
