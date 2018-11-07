@@ -18,6 +18,7 @@ import Network.Wai.Handler.Warp (run)
 import Network.Wai.Middleware.Cors (simpleCors)
 import Data.Proxy (Proxy(..))
 import Control.Monad.Error.Class (throwError)
+import Control.Monad.Free (foldFree)
 import qualified Item
 import qualified ParseFeed
 import qualified Action
@@ -51,7 +52,7 @@ items url _ = liftIO (parseFeed url)
 
 progress :: Maybe Action.UserID -> Maybe Action.Url -> Handler Action.Progress
 progress (Just uid) (Just url) = do
-  position <- liftIO $ Interpreter.interpret (Action.FetchPosition uid url)
+  position <- liftIO $ foldFree Interpreter.interpret (Action.fetchPosition uid url)
   case position of
     Nothing -> throwError err404
     Just a -> pure a
