@@ -52,7 +52,7 @@ items url _ = liftIO (parseFeed url)
 
 progress :: Maybe Action.UserID -> Maybe Action.Url -> Handler Action.Progress
 progress (Just uid) (Just url) = do
-  position <- liftIO $ foldFree Interpreter.interpret (Action.fetchPosition uid url)
+  position <- liftIO $ foldFree (Interpreter.interpret Interpreter.newStore) (Action.fetchPosition uid url)
   case position of
     Nothing -> throwError err404
     Just a -> pure a
