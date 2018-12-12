@@ -33,4 +33,5 @@ executable podcast-feeder
                        wai-cors,
                        warp,
                        free,
-                       mtl
+                       mtl,
+                       stm

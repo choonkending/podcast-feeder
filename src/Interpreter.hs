@@ -1,13 +1,15 @@
 {-# LANGUAGE GADTs #-}
 module Interpreter where
 import qualified Action as A
+import Control.Monad.STM (STM, atomically)
+import Control.Concurrent.STM.TVar (TVar, newTVar, readTVar, modifyTVar')
 import Data.List (find)
 
 data Store = Store [UserStore]
 data UserStore = UserStore A.UserID [A.Progress]
 
-newStore :: Store
-newStore = Store []
+newStore :: STM (TVar Store)
+newStore = newTVar (Store [])
 
 findUser :: A.UserID -> Store -> Maybe UserStore
 findUser uid (Store listOfUserStores) = find (isUser uid) listOfUserStores
@@ -28,7 +30,10 @@ storeProgress progress (UserStore uid progresses) = UserStore uid (progress : pr
 updateUserStore :: A.UserID -> (UserStore -> UserStore) -> Store -> Store
 updateUserStore uid f store = Store (findUser uid : userStores)
 
-interpret :: Store -> A.Action a -> IO a
-interpret store (A.StorePosition uid progress) = pure (storeProgress progress <$> findUser uid store)
+storePosition :: TVar Store -> A.UserID -> A.Progress -> STM ()
+storePosition tvarStore uid progress = modifyTVar' tvarStore (updateUserStore uid (storeProgress progress))
+
+interpret :: TVar Store -> A.Action a -> IO a
+interpret tvarStore (A.StorePosition uid progress) = atomically (storePosition tvarStore uid progress)
 interpret store (A.FetchPosition uid url) = pure (findUser uid store >>= findProgress url)
 interpret store (A.Action fa2b aa) = fa2b <$> interpret store aa
