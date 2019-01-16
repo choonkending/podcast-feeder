@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE RankNTypes #-}
 module Main where
 import Conduit (runConduit, (.|), MonadThrow)
 import Data.Conduit (ConduitM)
@@ -19,16 +20,21 @@ import Network.Wai.Middleware.Cors (simpleCors)
 import Data.Proxy (Proxy(..))
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Free (foldFree)
+import Control.Monad.STM (atomically)
 import qualified Item
 import qualified ParseFeed
 import qualified Action
 import qualified Interpreter
 
 main :: IO ()
-main = run 8081 app where
-  app = simpleCors $ serve proxy server
-  proxy :: Proxy API
-  proxy = Proxy
+main = do
+  tvarDatabase <- atomically Interpreter.newDatabase
+  let interpreter = Interpreter.interpret tvarDatabase
+  let app = simpleCors $ serve apiProxy (server interpreter)
+  run 8081 app
+
+apiProxy :: Proxy API
+apiProxy = Proxy
 
 parseFeed :: String -> IO [Item.Item]
 parseFeed url =
@@ -44,15 +50,15 @@ type API = ItemAPI :<|> ProgressAPI
 
 data SortBy = PublishedDescending | PublishedAscending
 
-server :: Server API
-server = items :<|> progress
+server :: Interpreter.Interpreter -> Server API
+server interpreter = items :<|> (progress interpreter)
 
 items :: String -> Maybe SortBy -> Handler [Item.Item]
 items url _ = liftIO (parseFeed url)
 
-progress :: Maybe Action.UserID -> Maybe Action.Url -> Handler Action.Progress
-progress (Just uid) (Just url) = do
-  position <- liftIO $ foldFree (Interpreter.interpret Interpreter.newStore) (Action.fetchPosition uid url)
+progress :: Interpreter.Interpreter -> Maybe Action.UserID -> Maybe Action.Url -> Handler Action.Progress
+progress interpreter (Just uid) (Just url) = do
+  position <- liftIO $ foldFree interpreter (Action.fetchPosition uid url)
   case position of
     Nothing -> throwError err404
     Just a -> pure a
